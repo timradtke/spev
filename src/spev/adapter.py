@@ -1,15 +1,55 @@
 import numpy as np
-import fev
 import shuffler as sf
 
 from datasets import DatasetDict
+from fev import Task
 
-def reshape_fev_predictions_per_window_to_sample_paths(
+def reshape_fev_predictions_to_sample_paths(
     predictions_per_window: list[DatasetDict],
-    task: fev.Task,
+    task: Task,
     n_samples: int = 2501,
     force_marginal: bool = False,
-) -> list[np.array]:
+) -> list[np.ndarray]:
+    """
+    Transform quantile predictions generated for fev into sample paths.
+
+    Takes quantile predictions generated for evaluation via a fev Task, pulls
+    past actuals of the data set from the fev Task, and combines both to
+    generate sample path forecasts using Shuffler that can be evaluated by a
+    SamplePathTask.
+
+    Use this function to evaluate models that can only generate marginal
+    quantile forecasts on tasks that require sample paths. The quality of the
+    evaluated sample paths will depend both on the original quantile forecasts
+    as well as their transformation into sample paths via Shuffler.
+
+    Parameters
+    ----------
+    predictions_per_window : list[DatasetDict]
+        Predictions prepared in the shape that a fev Task expects for
+        evaluation, see `models.Chronos2Model`.
+    task : Task
+        The fev Task for which the predictions were generated. Is used as
+        provider of the training data that Shuffler fits copulas against to
+        generate sample paths.
+    n_samples : int
+        The number of sample paths to draw.
+    force_marginal : bool
+        If True, draw sample paths by sampling from the original marginal
+        forecast distributions instead of from the Shuffler-approximated
+        joint forecast distribution.
+    
+    Returns
+    -------
+    y_pred_per_window : list[np.ndarray] (N, S, H, D)
+        A list of four-dimensional arrays of sample path forecasts. Each element
+        of the list contains the forecasts for one of the task's forecast
+        windows. This is the shape expected by
+        `SamplePathTask.evaluation_summary()`.
+        The first dimension's size equals the number of time series, the second
+        is the number of sample paths, the third is the forecast horizon, and
+        the fourth is the number of targets.
+    """
     windows_of_ls_quantile_array_prediction_per_series = []
     for window in predictions_per_window:
         ls_quantile_array_prediction_per_series = []
@@ -25,10 +65,9 @@ def reshape_fev_predictions_per_window_to_sample_paths(
 
     past_series_per_window = []
     for window in task.iter_windows():
-        # As used in `window._prepare_arrays()` in `Task.evaluation_summary()`
-        # https://github.com/autogluon/fev/blob/f9e2c7d3152ed7d15c3b1c2877bb3ae7d977046f/src/fev/task.py#L130
         past_data, _ = window.get_input_data()
-        past_series = [ts[task.target] for ts in past_data] # List of numpy arrays, one list item per time series
+        # List of numpy arrays, one item per time series:
+        past_series = [ts[task.target] for ts in past_data]
         past_series_per_window.append(past_series)
 
     windows_of_ls_sample_paths_per_series = []

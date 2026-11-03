@@ -2,6 +2,7 @@ from typing import Any, Type
 import numpy as np
 
 class SamplePathMetric:
+    """Base class for all metrics."""
     @property
     def name(self) -> str:
         """Name of the metric."""
