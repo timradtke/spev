@@ -119,7 +119,7 @@ def _quantile_loss(
         q=quantile_level,
         axis=1,
     )
-    
+
     return (
         2 * (q_pred - q_true) * (
             quantile_level * (q_pred > q_true) - \
@@ -135,14 +135,15 @@ def _crps(
     # https://skforecast.org/0.15.0/faq/probabilistic-forecasting-crps-score.html
     # https://www.lokad.com/continuous-ranked-probability-score/
     # https://getrecast.com/crps-evaluate-recast-models/
+    # https://doi.org/10.48550/arXiv.1709.04743
+    # https://doi.org/10.1175/1520-0434(2000)015%3C0559:DOTCRP%3E2.0.CO;2
     S = y_pred.shape[1]
     y_pred_sorted = np.sort(y_pred, axis=1) # Sort the samples for a given (N, H, D)
         
     mae = np.mean(np.abs(y_pred - y_true), axis=1) # (N, H, D)
 
-    c = np.arange(1, S+1)
-    weights = 2 * c - S - 1 # (S)
-    weights = weights[None, ..., None, None] # (N, S, H, D)
+    weights = 2 * np.arange(1, S + 1) - S - 1 # (S)
+    weights = weights[None, ..., None, None]  # (N, S, H, D)
     pairwise_diff = np.sum(weights * y_pred_sorted, axis=1) / (S ** 2) # (N, H, D)
 
     crps = mae - pairwise_diff
