@@ -119,8 +119,7 @@ def _quantile_loss(
         q=quantile_level,
         axis=1,
     )
-
-    # return 2 * np.abs((q_true - q_pred) * ((q_true <= q_pred) - quantile_level))
+    
     return (
         2 * (q_pred - q_true) * (
             quantile_level * (q_pred > q_true) - \
