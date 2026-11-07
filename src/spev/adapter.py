@@ -1,8 +1,14 @@
 import numpy as np
-import shuffler as sf
 
 from datasets import DatasetDict
 from fev import Task
+from . import _HAS_SHUFFLER
+
+if not _HAS_SHUFFLER:
+    raise ImportError(
+        """Install the optional `spev[adapter]` dependencies to use `spev.adapter`."""
+    )
+import shuffler as sf
 
 def reshape_fev_predictions_to_sample_paths(
     predictions_per_window: list[DatasetDict],

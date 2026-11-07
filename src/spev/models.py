@@ -1,7 +1,17 @@
 # See https://github.com/autogluon/fev/blob/main/models/chronos-2/model.py
 
+from . import _HAS_CHRONOS
+
+if not _HAS_CHRONOS:
+    raise ImportError(
+        """Install the optional `spev[models]` dependencies to use `spev.models`."""
+    )
+
 import datasets
 import fev
+import torch
+
+from chronos import BaseChronosPipeline
 
 class Chronos2Model(fev.ForecastingModel):
     """Chronos-2 model from https://github.com/amazon-science/chronos-forecasting."""
@@ -24,17 +34,21 @@ class Chronos2Model(fev.ForecastingModel):
         self.as_univariate = as_univariate
 
     def _fit_predict(self, task: fev.Task) -> list[datasets.DatasetDict]:
-        import torch
-        from chronos import BaseChronosPipeline
-
         if self.device == "auto":
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
         model_path = fev.utils.maybe_cache_from_s3(self.model_path)
-        pipeline = BaseChronosPipeline.from_pretrained(model_path, device_map=self.device, torch_dtype=torch.float32)
+        pipeline = BaseChronosPipeline.from_pretrained(
+            model_path,
+            device_map=self.device,
+            torch_dtype=torch.float32
+        )
 
         predictions_per_window, self.inference_time = pipeline.predict_fev(
-            task, batch_size=self.batch_size, cross_learning=self.cross_learning, as_univariate=self.as_univariate
+            task,
+            batch_size=self.batch_size,
+            cross_learning=self.cross_learning,
+            as_univariate=self.as_univariate,
         )
 
         return predictions_per_window
