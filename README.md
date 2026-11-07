@@ -1,14 +1,14 @@
-# SPEV
+# spev
 
-**S**ample **P**ath **EV**aluation library, inspired by [FEV](https://github.com/autogluon/fev/tree/main). It is work in progress.
+**S**ample **P**ath **EV**aluation library, inspired by [fev](https://github.com/autogluon/fev/tree/main). It is work in progress.
 
-FEV-bench is a fantastic forecast benchmark and the accompanying `fev` library makes it comfortable to compare models on a set of predefined tasks.
+fev-bench is a fantastic forecast benchmark and the accompanying `fev` library makes it comfortable to compare models on a set of predefined tasks.
 
-However, like most forecast benchmarks, FEV focuses its evaluation on point forecasts and quantiles of marginal distribution forecasts. SPEV is a proof-of-concept of how forecast tasks can be extended to evaluate the joint forecast distribution over the forecast horizon.
+However, like most forecast benchmarks, fev focuses its evaluation on point forecasts and quantiles of marginal distribution forecasts. Spev is a proof-of-concept of how forecast tasks can be extended to evaluate the joint forecast distribution over the forecast horizon.
 
-At the moment, SPEV defines its sample path tasks as a combination of aggregates and metrics to implement the kind of evaluation of joint forecast distributions in the form of sample paths as performed in, for example, [DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks](https://arxiv.org/abs/1704.04110) (Salinas et al., 2017), sections 4.1 and 6.
+At the moment, spev defines its sample path tasks as a combination of aggregates and metrics to implement the kind of evaluation of joint forecast distributions in the form of sample paths as performed in, for example, [DeepAR: Probabilistic Forecasting with Autoregressive Recurrent Networks](https://arxiv.org/abs/1704.04110) (Salinas et al., 2017), sections 4.1 and 6.
 
-## Install SPEV
+## Install spev
 
 Install spev from [Github](https://github.com/timradtke/spev):
 
@@ -20,7 +20,7 @@ uv pip install "git+https://github.com/timradtke/spev"
 
 Let's get you started with a minimal example. For an extended tutorial including additional aggregates and metrics, as well as evaluation of [Chronos-2](https://github.com/amazon-science/chronos-forecasting) marginal forecasts adapted to sample paths using [Shuffler](https://github.com/timradtke/shuffler), refer to [this notebook](https://github.com/timradtke/spev/blob/main/docs/evaluate_car_parts_using_spev.ipynb).
 
-Import spev and fev as a FEV task serves as base for a SPEV task.
+Import spev and fev as a FEV task serves as base for a spev task.
 
 ```python
 import numpy as np
@@ -31,7 +31,7 @@ from spev import SamplePathTask
 
 ### Define the FEV Task
 
-The FEV task is the basis for the evaluation. The SPEV sample path task only extends it to evaluate the same task but with sample path evaluation metrics.
+The FEV task is the basis for the evaluation. The spev sample path task only extends it to evaluate the same task but with sample path evaluation metrics.
 
 Forecast the last eight months of the car parts dataset.
 
@@ -46,13 +46,13 @@ base_task = Task(
 )
 ```
 
-### Define the SPEV Task
+### Define the spev Task
 
 The sample path task extends the base task by defining aggregates of sample paths, and metrics calculated on the aggregated sample paths. The `SUM` aggregate and the quantile loss metrics implement the evaluation applied onto the car parts dataset in the aforementioned Salinas et al. (2017). Quoting from their section 4.1:
 
 > The metrics are evaluated for a certain *spans* [L,L+S) in the prediction range, where L is a *lead time* after the forecast start point.
 
-Aggregates in SPEV implement the same approach of using lead time and span to define subsets of the forecast horizon that need to be aggregated for evaluation.
+Aggregates in spev implement the same approach of using lead time and span to define subsets of the forecast horizon that need to be aggregated for evaluation.
 
 ```python
 # Initialization of the `SamplePathTask` will download the dataset
@@ -66,13 +66,14 @@ task = SamplePathTask(
         {"name": "SUM", "lead_time": 0, "span": 8},
     ],
     metrics=[
-        {"name": "WQL", "quantile_level": 0.9, "epsilon": 0.01},
-        {"name": "WQL", "quantile_level": 0.5, "epsilon": 0.01},
+        # Mean Quantile Loss (called risk score in the papers)
+        {"name": "MQL", "quantile_level": 0.9},
+        {"name": "MQL", "quantile_level": 0.5},
     ]
 )
 ```
 
-### Evaluate Using SPEV Task
+### Evaluate Using spev Task
 
 With the task defined, you can evaluate sample path forecasts on the task. For simplicity, draw sample paths by sampling from a Poisson distribution. The sample path forecasts need to be a list with one array per forecast window defined in the FEV task (in this case, one). Each array is four-dimensional: The first dimension is the number of time series, the second dimension is the number of samples, the third dimension is the length of the forecast horizon, and the fourth is the number of targets. In this case, the shape will be (2674, 2501, 8, 1).
 
@@ -91,7 +92,7 @@ sample_path_forecasts = [
 ]
 ```
 
-Pass the sample path forecasts to the SPEV task for evaluation. It returns a list of evaluated metrics, one for each combination of aggregates and metrics defined in the sample path task. Here, with 3 aggregates and 2 metrics, there will be 6 evaluated metrics.
+Pass the sample path forecasts to the spev task for evaluation. It returns a list of evaluated metrics, one for each combination of aggregates and metrics defined in the sample path task. Here, with 3 aggregates and 2 metrics, there will be 6 evaluated metrics.
 
 ```python
 task.evaluation_summary(
@@ -101,28 +102,28 @@ task.evaluation_summary(
 ```
 [{'window': 0,
   'aggregate': 'Sum_[0,1]',
-  'metric': 'WeightedQuantileLoss@0.9',
-  'value': array([2.9842507])},
+  'metric': 'MeanQuantileLoss@0.9',
+  'value': array([1.40470307])},
  {'window': 0,
   'aggregate': 'Sum_[0,1]',
-  'metric': 'WeightedQuantileLoss@0.5',
-  'value': array([1.00000002])},
+  'metric': 'MeanQuantileLoss@0.5',
+  'value': array([0.47070546])},
  {'window': 0,
   'aggregate': 'Sum_[2,1]',
-  'metric': 'WeightedQuantileLoss@0.9',
-  'value': array([3.03936339])},
+  'metric': 'MeanQuantileLoss@0.9',
+  'value': array([1.44639299])},
  {'window': 0,
   'aggregate': 'Sum_[2,1]',
-  'metric': 'WeightedQuantileLoss@0.5',
-  'value': array([0.99999997])},
+  'metric': 'MeanQuantileLoss@0.5',
+  'value': array([0.47588681])},
  {'window': 0,
   'aggregate': 'Sum_[0,8]',
-  'metric': 'WeightedQuantileLoss@0.9',
-  'value': array([1.31726945])},
+  'metric': 'MeanQuantileLoss@0.9',
+  'value': array([4.12243922])},
  {'window': 0,
   'aggregate': 'Sum_[0,8]',
-  'metric': 'WeightedQuantileLoss@0.5',
-  'value': array([0.893785])}]
+  'metric': 'MeanQuantileLoss@0.5',
+  'value': array([2.79713033])}]
 ```
 
 For the most part, predicting a constant zero would have been better:
@@ -135,28 +136,28 @@ task.evaluation_summary(
 ```
 [{'window': 0,
   'aggregate': 'Sum_[0,1]',
-  'metric': 'WeightedQuantileLoss@0.9',
-  'value': array([0.2])},
+  'metric': 'MeanQuantileLoss@0.9',
+  'value': array([0.09414109])},
  {'window': 0,
   'aggregate': 'Sum_[0,1]',
-  'metric': 'WeightedQuantileLoss@0.5',
-  'value': array([1.00000002])},
+  'metric': 'MeanQuantileLoss@0.5',
+  'value': array([0.47070546])},
  {'window': 0,
   'aggregate': 'Sum_[2,1]',
-  'metric': 'WeightedQuantileLoss@0.9',
-  'value': array([0.19999999])},
+  'metric': 'MeanQuantileLoss@0.9',
+  'value': array([0.09517736])},
  {'window': 0,
   'aggregate': 'Sum_[2,1]',
-  'metric': 'WeightedQuantileLoss@0.5',
-  'value': array([0.99999997])},
+  'metric': 'MeanQuantileLoss@0.5',
+  'value': array([0.47588681])},
  {'window': 0,
   'aggregate': 'Sum_[0,8]',
-  'metric': 'WeightedQuantileLoss@0.9',
-  'value': array([0.19999999])},
+  'metric': 'MeanQuantileLoss@0.9',
+  'value': array([0.62590674])},
  {'window': 0,
   'aggregate': 'Sum_[0,8]',
-  'metric': 'WeightedQuantileLoss@0.5',
-  'value': array([0.99999997])}]
+  'metric': 'MeanQuantileLoss@0.5',
+  'value': array([3.12953368])}]
   ```
 
 ## References
